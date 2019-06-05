@@ -2,8 +2,8 @@ package config
 
 import (
 	"os"
-
-	util "github.com/sshahmaliyeva/ms-admin-activity/util"
+	
+	util "github.com/sshahmaliyeva/ms-admin-activity/blob/master/util"
 	"github.com/go-pg/pg"
 	log "github.com/sirupsen/logrus"
 )
