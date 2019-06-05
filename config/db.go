@@ -31,7 +31,5 @@ func ConnectPg() *pg.DB {
 		log.Fatal("Coudn't connect to db")
 	}
 
-	// pgDb.AddQueryHook(dbLogger{})
-
 	return pgDb
 }
