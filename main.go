@@ -1,7 +1,6 @@
 package  main
 
 import(
-	"fmt"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/joho/godotenv"
@@ -14,4 +13,8 @@ func init() {
 func main(){
 	log.SetFormatter(&log.JSONFormatter{})
 	log.Info("Application starting...")
+
+
+	db = config.ConnectPg()
+	log.Info("Database connection verified...")
 }
