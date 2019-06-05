@@ -2,8 +2,8 @@ package config
 
 import (
 	"os"
-	
-	util "github.com/sshahmaliyeva/ms-admin-activity/blob/master/util"
+
+	util "github.com/sshahmaliyeva/ms-admin-activity/util"
 	"github.com/go-pg/pg"
 	log "github.com/sirupsen/logrus"
 )
@@ -25,8 +25,7 @@ func logError(err error) {
 }
 
 func ConnectPg() *pg.DB {
-	log.Info(os.Getenv("DB_ADMIN_ACTIVITY_URL"))
-	pgOptions := util.ParseConnectionUrl(os.Getenv("DB_ADMIN_ACTIVITY_URL"))
+	pgOptions := util.ParseConnectionUrl(os.Getenv("DB_SIGN_SETTINGS_URL"))
 
 	pgDb = pg.Connect(&pg.Options{
 		Addr:     pgOptions.Addr,
