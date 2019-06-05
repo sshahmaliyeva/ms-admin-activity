@@ -25,6 +25,7 @@ func logError(err error) {
 }
 
 func ConnectPg() *pg.DB {
+	log.Info(os.Getenv("DB_ADMIN_ACTIVITY_URL"))
 	pgOptions := util.ParseConnectionUrl(os.Getenv("DB_ADMIN_ACTIVITY_URL"))
 
 	pgDb = pg.Connect(&pg.Options{

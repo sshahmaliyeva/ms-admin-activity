@@ -16,9 +16,9 @@ func init() {
 
 func main(){
 	log.SetFormatter(&log.JSONFormatter{})
-	log.Info("Application starting...")
+	//log.Info("Application starting...")
 
-
+//log.Info("---")
 	db = config.ConnectPg()
-	log.Info("Database connection verified...")
+	//log.Info("Database connection verified...")
 }
