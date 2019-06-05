@@ -3,7 +3,7 @@ package config
 import (
 	"os"
 
-	util "github.com/sshahmaliyeva/ms-admin-activity/util"
+	util "github.com/sshahmaliyeva/ms-admin-activity/tree/master/util"
 	"github.com/go-pg/pg"
 	log "github.com/sirupsen/logrus"
 )
