@@ -9,14 +9,7 @@ import (
 )
 
 var pgDb *pg.DB
-
-// type dbLogger struct{}
-
-// func (d dbLogger) BeforeQuery(q *pg.QueryEvent) {}
-
-// func (d dbLogger) AfterQuery(q *pg.QueryEvent) {
-// 	fmt.Println(q.FormattedQuery())
-// }
+fmt.Println(q.FormattedQuery())
 
 func logError(err error) {
 	if err != nil {
@@ -37,8 +30,6 @@ func ConnectPg() *pg.DB {
 	if pgDb == nil {
 		log.Fatal("Coudn't connect to db")
 	}
-
-	// pgDb.AddQueryHook(dbLogger{})
 
 	return pgDb
 }
