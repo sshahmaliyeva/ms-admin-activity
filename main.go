@@ -1,11 +1,12 @@
 package  main
 
 import(
+	"fmt"
 	log "github.com/sirupsen/logrus"
-	"github.com/sshahmaliyeva/ms-admin-activity/tree/master/config"
-	"github.com/joho/godotenv"
 	"net/http"
-
+	"github.com/gorilla/mux"
+	"github.com/joho/godotenv" 
+	"github.com/go-chi/chi/middleware"
 	"github.com/go-pg/pg"
 )
 
@@ -19,18 +20,20 @@ func main(){
 	log.SetFormatter(&log.JSONFormatter{})
 	log.Info("Application starting...")
 
-	db = config.ConnectPg()
 	log.Info("Database connection verified...")
 
-	// TODO: Add Http Listener to port 80
+	router := mux.NewRouter()
+	router.Use(middleware.Recoverer)
+	router.Use(middleware.Logger)
+
+	router.HandleFunc("/readiness", health)
+	router.HandleFunc("/health", health)
+
+	log.Info("Server listen at :80")
+	log.Fatal(http.ListenAndServe(":80", router))
 }
 
-/*	TODO LIST:
-*	- (Optional) Install any todo plugin or highlighter to view list of todos in project
-*	- Add go.mod *DONE*
-*	- Add README file
-*	- Add .gitignore for go project (can copy from ms-sign-settings)
-*	- Add Docker file (can copy from ms-sign-settings but needs refactoring)
-*	- Add infra terraform
-*	- Add circle CI (copy but refactor)
-*/
+func health(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprintf(w, "OK!")
+}

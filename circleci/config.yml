@@ -1,0 +1,171 @@
+version: 2.1
+
+executors:
+  golang:
+    docker: 
+      - image: circleci/golang
+    working_directory: ~/ms-admin-activity
+  terraform: 
+    docker:
+      - image: hashicorp/terraform:0.11.14
+    working_directory: ~/ms-admin-activity/infra
+
+commands:
+  build:
+    steps:
+      - run:
+          name: Build
+          command: GOOS=linux GOARCH=amd64 go build          
+
+  unit_test:
+    steps:
+      - run:
+          name: Unit Test
+          command: go test
+  docker_push:
+    steps:
+      - run: 
+          name: Install Docker client
+          command: |
+            set -x
+            VER="18.06.1-ce"
+            curl -L -o /tmp/docker-$VER.tgz https://download.docker.com/linux/static/stable/x86_64/docker-$VER.tgz
+            tar -xz -C /tmp -f /tmp/docker-$VER.tgz
+            mv /tmp/docker/* /usr/bin
+      - run: 
+          name: Push docker image
+          command: |
+            docker login -u $TF_VAR_docker_username -p $TF_VAR_docker_password
+            TAG_VERSION=ictcontact/ms-admin-activity:v2.0.$CIRCLE_BUILD_NUM
+            TAG_LATEST=ictcontact/ms-admin-activity:latest
+            docker build -t $TAG_VERSION -t $TAG_LATEST ..
+            docker push $TAG_VERSION
+            docker push $TAG_LATEST
+  tf_get_deps: 
+    steps:
+      - run:
+          name: install packages
+          command: apk update && apk add unzip jq bash
+  tf_init_on_validate: 
+    steps:
+      - run:
+          name: terraform init
+          command: terraform init -input=false -backend-config="bucket=digital.pashabank.eks-develop.terraform.configs"
+  tf_init_on_deploy: 
+    steps:
+      - run:
+          name: terraform init
+          command: |
+            if [ "$CIRCLE_BRANCH" != "master" ]; then
+              REF=develop
+              echo "it is develop"
+            else
+              REF=master
+              echo "it is master"
+              sed -i -e "s/ref=develop/ref=master/g" terraform.tf
+            fi
+            terraform init -input=false -backend-config="bucket=digital.pashabank.eks-$REF.terraform.configs"
+  tf_validate:  
+    steps:
+      - run:
+          name: Validate Terraform configurations
+          command: find . -type f -name "*.tf" -exec dirname {} \;|sort -u | while read m; do (terraform validate -check-variables=false "$m" && echo "√ $m") || exit 1 ; done
+      - run:
+          name: Check if Terraform configurations are properly formatted
+          command: |
+            if [[ -n "$(terraform fmt -write=false)" ]]
+                then echo "Some terraform files need be formatted, run 'terraform fmt' to fix"
+                exit 1
+            fi
+  tf_install_heptio:  
+    steps:
+      - run:
+          name: Install heptio
+          command: |
+            curl -L "https://github.com/kubernetes-sigs/aws-iam-authenticator/releases/download/v0.3.0/heptio-authenticator-aws_0.3.0_linux_amd64" -o "/usr/local/bin/heptio-authenticator-aws"
+            chmod +x /usr/local/bin/heptio-authenticator-aws
+  tf_plan:  
+    steps:
+      - run:
+          name: Terraform plan
+          command: terraform plan -var DOCKER_IMG_TAG=v2.0.$CIRCLE_BUILD_NUM -var CIRCLE_BUILD_NUM=$CIRCLE_BUILD_NUM
+  tf_apply:  
+    steps:
+      - run:
+          name: Terraform apply
+          command: terraform apply -var DOCKER_IMG_TAG=v2.0.$CIRCLE_BUILD_NUM -var CIRCLE_BUILD_NUM=$CIRCLE_BUILD_NUM -auto-approve
+          no_output_timeout: 30m
+
+jobs:
+  validate_code:
+    executor: golang
+    steps:
+      - checkout
+      - build
+      - unit_test
+      - persist_to_workspace: 
+          root: .
+          paths:
+            - .
+  validate_infra:
+    executor: terraform
+    steps:
+      - checkout:
+          path: ~/ms-admin-activity
+      - tf_get_deps
+      - tf_init_on_validate
+      - tf_validate
+      - tf_install_heptio
+      - tf_plan
+  deploy_infra:
+    executor: terraform
+    steps:
+      - checkout:
+          path: ~/ms-admin-activity
+      - attach_workspace: 
+          at: ../
+      - setup_remote_docker:
+          docker_layer_caching: true
+      - docker_push
+      - tf_get_deps
+      - tf_init_on_deploy
+      - tf_install_heptio
+      - tf_apply
+  deploy_infra_prod:
+    executor: terraform
+    steps:
+      - checkout:
+          path: ~/ms-admin-activity
+      - attach_workspace: 
+          at: ../
+      - setup_remote_docker:
+          docker_layer_caching: true
+      - docker_push
+      - tf_get_deps
+      - tf_init_on_deploy
+      - tf_install_heptio
+      - tf_apply
+
+workflows:
+  ms-admin-activity_workflow:
+    jobs:
+      - validate_code:
+          context: BUILD
+      - validate_infra:
+          context: AWS_TEST
+      - deploy_infra:
+          context: AWS_TEST
+          requires:
+            - validate_code
+            - validate_infra
+          filters:
+            branches:
+              only: develop
+      - deploy_infra_prod:
+          context: AWS_PROD
+          requires:
+          - validate_code
+          - validate_infra
+          filters:
+            branches:
+              only: master
